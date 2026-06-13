@@ -123,6 +123,33 @@
         (gltf) => {
           const model = gltf.scene;
 
+          // The KHR_materials_pbrSpecularGlossiness extension isn't handled
+          // by default in this three.js version, so the diffuse textures
+          // get dropped. Manually load and apply them here.
+          const texLoader = new THREE.TextureLoader(manager);
+          const diffuseMaps = {
+            'MI_M_B_44_Qishilong_body02_Inst': texLoader.load('./models/dragon/textures/MI_M_B_44_Qishilong_body02_Inst_diffuse.png'),
+            'MI_M_B_44_Qishilong_body02_2_Inst': texLoader.load('./models/dragon/textures/MI_M_B_44_Qishilong_body02_2_Inst_diffuse.png'),
+          };
+          for (const tex of Object.values(diffuseMaps)) {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.flipY = false;
+          }
+          model.traverse((node) => {
+            if (node.isMesh && node.material) {
+              const mats = Array.isArray(node.material) ? node.material : [node.material];
+              for (const mat of mats) {
+                const map = diffuseMaps[mat.name];
+                if (map) {
+                  mat.map = map;
+                  mat.color.set(0xffffff);
+                  mat.needsUpdate = true;
+                }
+              }
+            }
+          });
+
+
           const box = new THREE.Box3().setFromObject(model);
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
