@@ -43,16 +43,10 @@
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { GLTFLoaderSpecGlossPlugin } from 'three/addons/loaders/GLTFLoaderSpecGlossPlugin.js';
 
     // ---- CONFIG ----
     const GLTF_URL = './models/dragon/scene.gltf';
-    // scene.bin was too big to upload raw, so it's inside this zip
-    // (which also happens to contain a duplicate scene.gltf/textures —
-    // we only need scene.bin out of it).
     const ZIP_URL = './models/dragon/tarisland_-_dragon_high_poly.zip';
-    // Pick one of: Qishilong_skill02, Qishilong_skill05, Qishilong_skill06,
-    // Qishilong_skill06_dz, Qishilong_skill07, Qishilong_skill08
     const ANIMATION_NAME = null;
     // ----------------
 
@@ -86,7 +80,6 @@
     const clock = new THREE.Clock();
 
     async function loadDragon() {
-      // 1. Download the zip
       statusEl.textContent = 'Downloading dragon data… 0%';
       const res = await fetch(ZIP_URL);
       if (!res.ok) throw new Error(`Failed to fetch ${ZIP_URL} (${res.status})`);
@@ -107,19 +100,15 @@
       }
       const zipBlob = new Blob(chunks);
 
-      // 2. Extract scene.bin from the zip
       statusEl.textContent = 'Unpacking dragon data…';
       const zip = await JSZip.loadAsync(zipBlob);
       const binEntry = zip.file('scene.bin');
       if (!binEntry) throw new Error('scene.bin not found inside zip');
       const binArrayBuffer = await binEntry.async('arraybuffer');
 
-      // 3. Expose it as a blob URL so GLTFLoader's request for "scene.bin"
-      //    can be redirected to it
       const binBlob = new Blob([binArrayBuffer], { type: 'application/octet-stream' });
       const binBlobUrl = URL.createObjectURL(binBlob);
 
-      // 4. LoadingManager redirects scene.bin -> our blob URL
       const manager = new THREE.LoadingManager();
       manager.setURLModifier((url) => {
         if (url.endsWith('scene.bin')) return binBlobUrl;
@@ -129,7 +118,6 @@
       statusEl.textContent = 'Loading dragon model… 0%';
 
       const loader = new GLTFLoader(manager);
-      loader.register((parser) => new GLTFLoaderSpecGlossPlugin(parser));
       loader.load(
         GLTF_URL,
         (gltf) => {
