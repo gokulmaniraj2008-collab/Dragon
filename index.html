@@ -17,9 +17,28 @@
     font-family:monospace; font-size:10px; max-width:90vw;
   }
   #credit a { color:rgba(0,0,0,0.6); }
+  .site-nav {
+    position:fixed; z-index:20; top:14px; right:14px; display:flex; gap:8px;
+    font:12px/1.2 monospace; letter-spacing:.08em; text-transform:uppercase;
+  }
+  .site-nav a {
+    display:inline-block; padding:10px 13px; border:1px solid #d8d8d8;
+    border-radius:999px; color:#222; background:rgba(255,255,255,.88);
+    text-decoration:none; backdrop-filter:blur(8px);
+  }
+  .site-nav a[aria-current="page"] { background:#222; border-color:#222; color:#fff; }
+  .site-nav a:focus-visible { outline:2px solid #555; outline-offset:3px; }
+  @media(max-width:480px) {
+    .site-nav { top:10px; right:10px; gap:5px; }
+    .site-nav a { padding:9px 10px; font-size:10px; }
+  }
 </style>
 </head>
 <body>
+  <nav class="site-nav" aria-label="Main navigation">
+    <a href="./index.html" aria-current="page">🐉 Dragon</a>
+    <a href="./bus.html">🚌 TNSTC Bus</a>
+  </nav>
   <div id="container"></div>
   <div id="status">Loading dragon… 0%</div>
   <div id="credit">
@@ -126,9 +145,7 @@
         (gltf) => {
           const model = gltf.scene;
 
-          // The KHR_materials_pbrSpecularGlossiness extension isn't handled
-          // by default in this three.js version, so the diffuse textures
-          // get dropped. Manually load and apply them here.
+          // Restore diffuse maps for the legacy specular-glossiness materials.
           const texLoader = new THREE.TextureLoader(manager);
           const diffuseMaps = {
             'MI_M_B_44_Qishilong_body02_Inst': texLoader.load('./models/dragon/textures/MI_M_B_44_Qishilong_body02_Inst_diffuse.png'),
@@ -152,7 +169,6 @@
               }
             }
           });
-
 
           const box = new THREE.Box3().setFromObject(model);
           const size = box.getSize(new THREE.Vector3());
