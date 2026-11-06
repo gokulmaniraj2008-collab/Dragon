@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bus vs Dragon — Road Clash</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080d18;color:#fff;font-family:system-ui,Arial}
+#game{position:fixed;inset:0}canvas{display:block}
+.hud{position:fixed;z-index:3;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.pill{padding:9px 13px;border:1px solid #ffffff35;border-radius:14px;background:#08111dcc;backdrop-filter:blur(8px);font-weight:800;font-size:13px}
+#health{color:#ff7777}#message{position:fixed;z-index:4;top:76px;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:14px;background:#101a2ddd;border:1px solid #ffffff30;text-align:center;font-weight:800;max-width:90%;width:max-content}
+.controls{position:fixed;z-index:5;bottom:18px;left:0;right:0;display:flex;justify-content:space-between;align-items:end;padding:0 18px;gap:10px}
+.group{display:flex;gap:9px}.ctrl{border:1px solid #ffffff55;background:#101a2ddd;color:white;border-radius:18px;min-width:62px;min-height:58px;font-size:22px;font-weight:900;touch-action:none;box-shadow:0 6px 20px #0006}
+#punch{background:linear-gradient(135deg,#ff7a18,#ed1c45);min-width:108px;font-size:15px;letter-spacing:.06em}
+#start{position:fixed;z-index:10;inset:0;display:grid;place-items:center;background:linear-gradient(#07101bcc,#07101fee);padding:24px;text-align:center}
+.panel{max-width:440px;padding:28px 22px;border:1px solid #ffffff30;border-radius:26px;background:#101a2df2;box-shadow:0 20px 80px #0009}
+.panel h1{font-size:clamp(28px,8vw,46px);line-height:1;margin:0 0 12px}.panel p{color:#c8d4e7;line-height:1.55}.mainbtn{border:0;border-radius:15px;background:linear-gradient(135deg,#ff8a00,#ef2c4f);color:#fff;padding:15px 26px;font-size:17px;font-weight:900}
+.small{font-size:12px;color:#aab7cb}
+.nav{position:fixed;z-index:6;right:12px;top:58px;display:flex;gap:7px}.nav a{color:white;text-decoration:none;font-size:11px;padding:8px 10px;border:1px solid #ffffff40;border-radius:99px;background:#08111dcc}
+@media(min-width:800px){.controls{padding:0 8vw}.ctrl{min-width:72px;min-height:64px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div class="hud"><div class="pill">🏁 DISTANCE <span id="distance">0</span> m</div><div class="pill">⭐ SCORE <span id="score">0</span></div><div class="pill" id="health">❤️ <span id="hp">3</span></div></div>
+<div id="message">Drive forward — the dragon is waiting!</div>
+<div class="nav"><a href="./index.html">🐉 Dragon</a><a href="./bus.html">🚌 Bus</a></div>
+<div class="controls">
+ <div class="group"><button class="ctrl" id="left">◀</button><button class="ctrl" id="right">▶</button></div>
+ <div class="group"><button class="ctrl" id="punch">👊 PUNCH</button></div>
+</div>
+<div id="start"><div class="panel"><div style="font-size:48px">🚌⚡🐉</div><h1>BUS vs DRAGON</h1><p>Drive your TNSTC bus down the road. Dodge the barriers, collect stars and fight the giant dragon when it appears!</p><p><b>Controls:</b> ◀ ▶ to steer · 👊 PUNCH to attack</p><button class="mainbtn" id="play">START GAME</button><p class="small">Made for mobile and desktop · No download required</p></div></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+const mount=document.querySelector('#game');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9bc9e8);scene.fog=new THREE.Fog(0x9bc9e8,35,150);
+const camera=new THREE.PerspectiveCamera(62,innerWidth/innerHeight,.1,300);camera.position.set(0,5.2,11);camera.lookAt(0,1,-7);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;mount.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xeaf6ff,0x58613d,2));
+const sun=new THREE.DirectionalLight(0xffffff,2.4);sun.position.set(-8,14,7);sun.castShadow=true;scene.add(sun);
+const road=new THREE.Mesh(new THREE.PlaneGeometry(13,220),new THREE.MeshStandardMaterial({color:0x343b45,roughness:1}));road.rotation.x=-Math.PI/2;road.position.set(0,-.08,-85);road.receiveShadow=true;scene.add(road);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,240),new THREE.MeshStandardMaterial({color:0x527c45}));ground.rotation.x=-Math.PI/2;ground.position.set(0,-.18,-85);scene.add(ground);
+const marks=[];for(let z=8;z>-210;z-=9){for(const x of [-2.15,2.15]){const m=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,3.5),new THREE.MeshBasicMaterial({color:0xf4e8b4}));m.position.set(x,.01,z);scene.add(m);marks.push(m)}}
+for(let i=0;i<26;i++){for(const side of [-1,1]){const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.15,.22,1.7,7),new THREE.MeshStandardMaterial({color:0x725039}));trunk.position.set(side*(9+Math.random()*5),.8,-i*9-8);scene.add(trunk);const crown=new THREE.Mesh(new THREE.SphereGeometry(1.15,8,7),new THREE.MeshStandardMaterial({color:0x2e713c,roughness:1}));crown.position.set(trunk.position.x,2.2,trunk.position.z);crown.scale.set(1,1.2,1);scene.add(crown)}}
+const bus=new THREE.Group();scene.add(bus);bus.position.set(0,0,5);
+function makeFallbackBus(){const body=new THREE.Mesh(new THREE.BoxGeometry(2.15,2.05,4.7),new THREE.MeshStandardMaterial({color:0xe8b51b,metalness:.25,roughness:.35}));body.position.y=1.45;body.castShadow=true;bus.add(body);const lower=new THREE.Mesh(new THREE.BoxGeometry(2.2,.55,4.65),new THREE.MeshStandardMaterial({color:0xd92725,metalness:.2}));lower.position.set(0,.55,0);bus.add(lower);const glass=new THREE.Mesh(new THREE.BoxGeometry(1.85,.75,.06),new THREE.MeshStandardMaterial({color:0x172d40,metalness:.4,roughness:.15}));glass.position.set(0,2.05,-2.37);bus.add(glass);for(const x of [-1.12,1.12])for(const z of [-1.55,1.55]){const w=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.25,16),new THREE.MeshStandardMaterial({color:0x111318,roughness:.9}));w.rotation.z=Math.PI/2;w.position.set(x,.55,z);bus.add(w)}}
+makeFallbackBus();
+new GLTFLoader().load('./tnstc_ordinary_bus.glb',g=>{const model=g.scene;const b=new THREE.Box3().setFromObject(model);const s=b.getSize(new THREE.Vector3());const c=b.getCenter(new THREE.Vector3());model.scale.setScalar(4.8/Math.max(s.x,s.y,s.z));model.position.sub(c.multiplyScalar(model.scale.x));model.position.y+=.15;bus.clear();bus.add(model);},undefined,e=>console.warn('Using built-in bus while GLB is unavailable',e));
+const dragon=new THREE.Group();dragon.visible=false;dragon.position.set(0,0,-34);scene.add(dragon);
+const skin=new THREE.MeshStandardMaterial({color:0x176d49,roughness:.48,metalness:.1});const belly=new THREE.MeshStandardMaterial({color:0xb8a64c,roughness:.65});const hornmat=new THREE.MeshStandardMaterial({color:0xe7d5a0,roughness:.5});
+function sphere(parent,mat,pos,scale){const m=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),mat);m.position.set(...pos);m.scale.set(...scale);m.castShadow=true;parent.add(m);return m}
+sphere(dragon,skin,[0,2.25,0],[1.3,1.45,.8]);sphere(dragon,belly,[0,2.1,.72],[.8,1.05,.22]);sphere(dragon,skin,[0,4,-.05],[.9,.75,.8]);sphere(dragon,skin,[0,3.75,.72],[.72,.42,.5]);
+for(const x of [-.48,.48]){sphere(dragon,hornmat,[x,4.75,-.15],[.16,.65,.16]).rotation.z=x<0?-.28:.28;sphere(dragon,new THREE.MeshStandardMaterial({color:0xffd74d,emissive:0x553300}),[x*.72,4.1,.72],[.12,.12,.08])}
+const arms=[];for(const x of [-1.2,1.2]){const arm=new THREE.Group();arm.position.set(x,3.1,.1);dragon.add(arm);sphere(arm,skin,[x<0?-.5:.5,-.3,.15],[.48,.42,.48]);const fist=sphere(arm,skin,[x<0?-.85:.85,-.55,.5],[.55,.5,.55]);arms.push({arm,fist,side:Math.sign(x)})}
+const wingmat=new THREE.MeshStandardMaterial({color:0x174b3c,side:THREE.DoubleSide});for(const x of [-1,1]){const wing=new THREE.Mesh(new THREE.ConeGeometry(1.35,2.4,3),wingmat);wing.position.set(x*1.15,3.1,-.6);wing.rotation.z=x<0?.8:-.8;dragon.add(wing)}
+const tail=sphere(dragon,skin,[0,1.3,-1.1],[.35,.35,1.5]);tail.rotation.x=-.25;
+const obstacles=[],stars=[],effects=[];const boxGeo=new THREE.BoxGeometry(1.25,1.2,1);const boxMat=new THREE.MeshStandardMaterial({color:0xc84a31,roughness:.8});
+function spawnObstacle(z){const o=new THREE.Mesh(boxGeo,boxMat);o.position.set([-2.1,0,2.1][Math.floor(Math.random()*3)],.6,z);o.castShadow=true;scene.add(o);obstacles.push(o)}
+function spawnStar(z){const s=new THREE.Mesh(new THREE.TorusGeometry(.42,.12,8,16),new THREE.MeshStandardMaterial({color:0xffdc4b,emissive:0x7a4a00,metalness:.4}));s.position.set([-2.1,0,2.1][Math.floor(Math.random()*3)],1.3,z);scene.add(s);stars.push(s)}
+let running=false,over=false,dist=0,score=0,hp=3,lane=0,speed=19,dragonMode=false,dragonHP=5,attackCooldown=0,punchFlash=0,lastSpawn=0;
+const $=id=>document.getElementById(id);function updateHUD(){$('distance').textContent=Math.floor(dist);$('score').textContent=score;$('hp').textContent=hp}
+function say(t){$('message').textContent=t}
+function steer(d){if(!running||over)return;lane=Math.max(-1,Math.min(1,lane+d))}
+function punch(){if(!running||over)return;if(!dragonMode){say('No dragon yet — keep driving!');return}if(attackCooldown>0)return;attackCooldown=.65;punchFlash=.3;dragonHP--;score+=100;say(dragonHP<=0?'DRAGON DEFEATED! 🐉💥':'POWER PUNCH! Dragon hit!');const ring=new THREE.Mesh(new THREE.TorusGeometry(.6,.12,8,24),new THREE.MeshBasicMaterial({color:0xffb12b}));ring.position.set(0,2,-3);scene.add(ring);effects.push({mesh:ring,life:.45});if(dragonHP<=0){dragon.visible=false;dragonMode=false;score+=500;setTimeout(()=>{if(running)say('Dragon defeated! Keep driving for bonus stars!')},500)}}
+$('left').onpointerdown=()=>steer(-1);$('right').onpointerdown=()=>steer(1);$('punch').onpointerdown=punch;
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key==='a')steer(-1);if(e.key==='ArrowRight'||e.key==='d')steer(1);if(e.key===' '||e.key==='Enter')punch()});
+function hit(){hp--;updateHUD();say('CRASH! Watch the road!');bus.position.x=0;lane=0;if(hp<=0)endGame()}
+function endGame(){over=true;running=false;$('start').style.display='grid';$('start').querySelector('h1').textContent='GAME OVER';$('start').querySelector('p').textContent='Distance: '+Math.floor(dist)+' m · Score: '+score;$('play').textContent='PLAY AGAIN'}
+function startGame(){for(const a of [...obstacles,...stars,...effects.map(e=>e.mesh)])scene.remove(a);obstacles.length=stars.length=effects.length=0;dist=0;score=0;hp=3;lane=0;speed=19;dragonMode=false;dragonHP=5;dragon.visible=false;attackCooldown=0;over=false;running=true;lastSpawn=0;bus.position.set(0,0,5);$('start').style.display='none';say('Drive forward — collect stars and dodge barriers!');updateHUD()}
+$('play').onclick=startGame;
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);if(running){dist+=speed*dt;attackCooldown=Math.max(0,attackCooldown-dt);bus.position.x=THREE.MathUtils.lerp(bus.position.x,lane*2.1,dt*7);bus.position.rotation.z=THREE.MathUtils.lerp(bus.position.rotation.z,-(lane*2.1-bus.position.x)*.1,dt*6);for(const m of marks){m.position.z+=speed*dt;if(m.position.z>12)m.position.z-=220}
+if(dist-lastSpawn>17){lastSpawn=dist;Math.random()>.36?spawnObstacle(-95):spawnStar(-95);if(Math.random()>.55)spawnStar(-112)}
+for(let i=obstacles.length-1;i>=0;i--){const o=obstacles[i];o.position.z+=speed*dt;if(o.position.z>4&&o.position.z<7&&Math.abs(o.position.x-bus.position.x)<1.25){scene.remove(o);obstacles.splice(i,1);hit();continue}if(o.position.z>12){scene.remove(o);obstacles.splice(i,1)}}
+for(let i=stars.length-1;i>=0;i--){const s=stars[i];s.position.z+=speed*dt;s.rotation.y+=dt*3;if(s.position.z>3&&s.position.z<7&&Math.abs(s.position.x-bus.position.x)<1.5){score+=25;scene.remove(s);stars.splice(i,1);say('STAR +25 ⭐');updateHUD();continue}if(s.position.z>12){scene.remove(s);stars.splice(i,1)}}
+if(dist>100&&!dragonMode&&dragonHP>0){dragonMode=true;dragon.visible=true;dragon.position.z=-27;say('THE DRAGON IS HERE! TAP PUNCH! 👊')}
+if(dragonMode){dragon.position.z=Math.min(-13,dragon.position.z+dt*1.8);dragon.rotation.y=Math.sin(performance.now()*.001)*.12;const beat=performance.now()*.001;arms[0].arm.rotation.x=Math.sin(beat*2)*.12;arms[1].arm.rotation.x=Math.sin(beat*2+1)*.12;if(dragon.position.z>-15&&Math.sin(beat*2.4)>.94){dragon.rotation.x=.12;hp=Math.max(0,hp);if(hp===0)endGame()}else dragon.rotation.x=0}
+for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.life-=dt;e.mesh.scale.multiplyScalar(1+dt*3);if(e.life<=0){scene.remove(e.mesh);effects.splice(i,1)}}
+updateHUD()}
+camera.position.x=THREE.MathUtils.lerp(camera.position.x,bus.position.x*.28,dt*2);camera.lookAt(bus.position.x*.18,1,-8);renderer.render(scene,camera)}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
